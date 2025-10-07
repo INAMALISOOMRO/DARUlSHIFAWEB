@@ -7,12 +7,17 @@
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; display: flex; flex-direction: column; height: 100vh; }
         header { background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        header img { width: 80px; height: 80px; object-fit: contain; }
-        .header-title { font-size: 1.5rem; font-weight: bold; color: #333; }
+        header img { width: 100px; height: 100px; object-fit: contain; align-items: center; }
+        .header-title { font-size: 2.5rem; font-weight: bold; color: #333; }
         .user-info { text-align: right; }
         .user-info #logout-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-top: 5px; }
-        .dashboard-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
-        .welcome-message { font-size: 2rem; color: #333; margin-bottom: 2rem; }
+        .dashboard-container {  flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* This aligns content to the left! */
+    justify-content: center; /* This keeps it centered vertically */
+    padding: 2rem; }
+        .welcome-message { font-size: 1.8rem; color: #333; margin-bottom: 2rem; }
         .nav-links { display: flex; gap: 2rem; justify-content: center; }
         .nav-card { background: white; color: #333; text-decoration: none; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s, box-shadow 0.2s; }
         .nav-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
@@ -21,10 +26,25 @@
     </style>
 </head>
 <body>
-
+     <style>
+    body {
+  /* Set the image and make sure it fills the screen */
+  background-image: url('/DARUlSHIFAWEB/images/student.jpg');
+  /* background-size: cover; This makes the image cover the whole screen */
+  background-position: right; /* This centers the image */
+  background-size: 50% auto; /* 80% of the screen width, height adjusts automatically */
+  background-repeat: no-repeat; /* This prevents the image from repeating */
+  
+  /* Ensure the body takes up the full height of the viewport
+  height: 80px; 
+  
+  /* Good practice to remove default browser margin */
+  /* margin: 0;  */
+} 
+  </style>
     <header>
-        <img src="logo.png" alt="Hospital Logo">
-        <div class="header-title">Darul Shifa Hospital Portal</div>
+        <img src="logo.png" alt="Hospital Logo" >
+        <div class="header-title">Darul Shifa Imam Khomeini Hospital Portal</div>
         <div class="user-info">
             <span id="userName"></span><br>
             <button id="logout-btn">Logout</button>
@@ -34,11 +54,11 @@
     <main class="dashboard-container">
         <h1 class="welcome-message" id="welcomeMessage"></h1>
         <div class="nav-links">
-            <a id="patient-link" href="patient.html" class="nav-card" style="display: none;" >
+            <a id="patient-link" href="patient.html" class="nav-card" style="display: none; border: solid black 1px; box-shadow: black 2px;"  >
                 <h2>Patient Records 📝</h2>
                 <p>Manage patient registration and data.</p>
             </a>
-            <a id="pharmacy-link" href="pharmacy.html" class="nav-card" style="display: none;">
+            <a id="pharmacy-link" href="pharmacy.html" class="nav-card" style="display: none; border: solid black 1px; box-shadow: black 2px;">
                 <h2>Pharmacy System 💊</h2>
                 <p>Manage inventory and sales.</p>
             </a>
