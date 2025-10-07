@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Darul Shifa Patient Management</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background-color: #f9f9f9;
+      color: #212529;
+      line-height: 1.4;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      background-color: #ffffff;
+      color: #000000;
+      padding: 1rem 2rem;
+      gap: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    header img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      border-radius: 60px;
+    }
+    .hospital-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .hospital-info h1 {
+      font-size: 3rem;
+      margin: 0;
+      font-weight: bold;
+    }
+    .hospital-info p {
+      font-size: 1rem;
+      margin: 0.1rem 0;
+    }
+    .main-container {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      flex-wrap: nowrap;
+      
+    }
+    .left-panel {
+      flex: 0 0 950px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      border: solid black 2px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    .left-panel h2 {
+      font-size: 1.3rem;
+      color: #000000;
+      margin-bottom: 0.5rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.7rem;
+      border: 2px solid #adaaaa;
+      border-radius: 6px;
+      font-size: 1rem;
+      
+    }
+    .btn-container {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .btn {
+      background-color: #ffffff;
+      color: #000000;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.3s ease;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+    }
+    .btn:hover {
+      background-color: #1f87ff;
+    }
+    .delete-btn {
+      background-color: #dc3545;
+    }
+    .delete-btn:hover {
+      background-color: #a71d2a;
+    }
+    .middle-panel {
+      flex: 0 0 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 700px;
+      border: solid black 2px;
+    }
+    .data-grid {
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-height: 1000px;
+      overflow-y: auto;
+    }
+    .data-grid h2 {
+      font-size: 1.3rem;
+      color: #000000;
+      margin-bottom: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+    }
+    table th,
+    table td {
+      border: 1px solid #adaaaa;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    table th {
+      background-color: #ffffff;
+      color: #000000;
+      font-weight: 600;
+    }
+    .table-btn {
+      padding: 0.3rem 0.7rem;
+      background-color: #1f87ff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .table-btn:hover {
+      background-color: #1f87ff;
+    }
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 120px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      border: solid black 2px;
+    }
+    .rx-section {
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 1rem;
+      flex: 1;
+      min-height: 100px;
+    }
+    .rx-section h2 {
+      font-size: 1.3rem;
+      color: #00509E;
+      margin-bottom: 0.5rem;
+    }
+    .rx-section textarea {
+      width: 100%;
+      height: 120px;
+      border: 1px solid #adadad;
+      border-radius: 6px;
+      padding: 0.6rem;
+      font-size: 1rem;
+    }
+    .print-container {
+      width: 280mm;
+      height: 400mm;
+      margin: auto;
+      padding: 20px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+      border: 3px solid #000000;
+      border-radius: 6px;
+    }
+    .print-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #000000;
+    }
+    .print-header img {
+      max-width: 130px;
+      height: auto;
+      margin-right: 15px;
+      object-fit: contain;
+    }
+    .print-header .address {
+      flex-grow: 1;
+      position: relative;
+    }
+    .print-header .address h2 {
+      margin: 0;
+      font-size: 46px;
+      font-weight: bold;
+    }
+    .print-header .address p {
+      margin: 5px 0;
+      font-size: 25px;
+    }
+    .top-count {
+      position: absolute;
+      top: 0;
+      right: 0;
+      font-size: 25px;
+      font-weight: bold;
+      color: #000;
+    }
+    .print-top-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 25px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #000000;
+      font-weight: bold;
+    }
+    .columns {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 20px;
+      height: 82%;
+    }
+    .left-column,
+    .right-column {
+      border: 3px solid #000000;
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .left-column {
+      flex: 0.4;
+    }
+    .left-column h2 {
+      text-align: center;
+      font-size: 30px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .left-column div {
+      font-size: 25px;
+      margin-bottom: 20px;
+    }
+    .right-column {
+      flex: 1;
+    }
+    .right-column div {
+      font-size: 25px;
+      margin-bottom: 10px;
+    }
+    .rx {
+      margin-top: 15px;
+      text-align: left;
+    }
+    .rx h1 {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 60px;
+      font-weight: normal;
+    }
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      padding: 1rem;
+      font-size: 1.4rem;
+      color: #000000;
+      background-color: #ffffff;
+      border-top: 1px solid #000000;
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.5);
+    }
+    @media (max-width: 1400px) {
+      .main-container {
+        flex-wrap: wrap;
+      }
+      .left-panel,
+      .middle-panel,
+      .right-panel {
+        flex: 1 1 100%;
+        min-width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <script>
+  // Check if the logged-in user has the correct role for this page
+  const userRole = sessionStorage.getItem('loggedInRole');
+  // Allowed roles for this page are 'admin' or 'reception'
+  if (!userRole || (userRole !== 'admin' && userRole !== 'reception')) {
+    // If not allowed, redirect to the main login page
+    window.location.href = 'index.html';
+  }
+</script>
+  <header>
+    <img src="logo.png" alt="Hospital Logo" />
+    <div class="hospital-info">
+      <h1>Darul Shifa Imam Khomeini Hospital</h1>
+      <p>Block 3, Hazara Town, Brewery Road, Quetta</p>
+      <p>Phone: 0812857135</p>
+    </div>
+  </header>
+  <div class="main-container">
+    <div class="left-panel">
+      <h2>Add New Patient</h2>
+      <form id="patientForm">
+        <div class="form-group">
+          <label for="patientName">Patient Name</label>
+          <input type="text" id="patientName" required />
+        </div>
+        <div class="form-group">
+  <label for="contactNumber">Contact Number</label>
+  <input type="tel" id="contactNumber" placeholder="e.g. 081-1234567" />
+</div>
+        <div class="form-group">
+          <label for="amount">Payment (PKR)</label>
+          <input type="number" id="amount" placeholder="e.g. 500" />
+        </div>
+        <div class="form-group">
+          <label for="doctorName">Doctor's Name</label>
+          <input list="doctorList" id="doctorName" placeholder="Type or select a doctor" required />
+          <datalist id="doctorList"></datalist>
+          <p id="doctorCount"></p>
+        </div>
+        <div class="form-group" id="patientCountGroup" style="display: none;">
+          <label id="patientCountLabel">Today's Patient Count for Doctor: </label>
+          <input type="number" id="patientCountInput" min="0" />
+        </div>
+        <div class="form-group">
+          <label for="gender">Gender</label>
+          <input list="genderList" id="gender" placeholder="Male/Female" required />
+          <datalist id="genderList">
+            <option value="Male"></option>
+            <option value="Female"></option>
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label for="patientAge">Age</label>
+          <input type="text" id="patientAge" required />
+        </div>
+        <div class="form-group">
+          <label for="weight">Weight (kg)</label>
+          <input type="number" id="weight" placeholder="70" />
+        </div>
+        <div class="form-group">
+          <label for="temperature">Temperature</label>
+          <input type="text" id="temperature" placeholder="98.6 F" />
+        </div>
+        <div class="form-group">
+          <label for="bp">Blood Pressure</label>
+          <input type="text" id="bp" placeholder="120/80" />
+        </div>
+        <div class="form-group">
+          <label for="clinicalNotes">Clinical Notes</label>
+          <textarea id="clinicalNotes" rows="2"></textarea>
+        </div>
+      </form>
+      <div class="btn-container">
+        <button class="btn" onclick="addPatient()">Save & Print</button>
+        <button class="btn delete-btn" onclick="deletePatient()">Delete</button>
+      </div>
+    </div>
+    <div class="middle-panel">
+      <div class="data-grid">
+        <h2>Patient Records</h2>
+        <table id="patientTable">
+          <thead>
+            <tr>
+              <th>Patient ID</th>
+              <th>Name</th>
+              <th>Gender</th>
+              <th>Age</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="rx-section">
+        <h2>RX</h2>
+        <textarea id="rxText" placeholder="Prescription details..."></textarea>
+      </div>
+    </div>
+  </div>
+  <footer>
+    Made by INAM ALI SOOMRO
+  </footer>
+  <script>
+    let patients = [];
+    let doctors = [];
+    let doctorCounts = {};
+    
+
+    function openDatabase() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('HospitalDB', 4);  // Change from 3 to 4
+
+            request.onupgradeneeded = function(event) {
+                const db = event.target.result;
+                // Create object stores if they don't exist
+                if (!db.objectStoreNames.contains('patients')) {
+                    db.createObjectStore('patients', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('doctors')) {
+                    db.createObjectStore('doctors', { keyPath: 'key' });
+                }
+                if (!db.objectStoreNames.contains('doctorCounts')) {
+                    db.createObjectStore('doctorCounts', { keyPath: 'key' });
+                }
+                if (!db.objectStoreNames.contains('doctorCountsHistory')) {
+                    db.createObjectStore('doctorCountsHistory', { keyPath: 'date' });
+                }
+                if (!db.objectStoreNames.contains('config')) {
+  db.createObjectStore('config', { keyPath: 'key' });
+}
+            };
+
+            request.onsuccess = function(event) {
+                resolve(event.target.result);
+            };
+
+            request.onerror = function(event) {
+                reject(event.target.error);
+            };
+        });
+    }
+
+    async function migrateData() {
+        const db = await openDatabase();
+        const patientsFromLS = JSON.parse(localStorage.getItem('patients')) || [];
+        if (patientsFromLS.length > 0) {
+            const transaction = db.transaction(['patients'], 'readwrite');
+            const store = transaction.objectStore('patients');
+            patientsFromLS.forEach(patient => {
+                store.put(patient);
+            });
+            localStorage.removeItem('patients');
+        }
+        const doctorsFromLS = JSON.parse(localStorage.getItem('doctors')) || [];
+        if (doctorsFromLS.length > 0) {
+            const transaction = db.transaction(['doctors'], 'readwrite');
+            const store = transaction.objectStore('doctors');
+            store.put({ key: 'list', value: doctorsFromLS });
+            localStorage.removeItem('doctors');
+        }
+        const doctorCountsFromLS = JSON.parse(localStorage.getItem('doctorCounts')) || {};
+        if (Object.keys(doctorCountsFromLS).length > 0) {
+            const transaction = db.transaction(['doctorCounts'], 'readwrite');
+            const store = transaction.objectStore('doctorCounts');
+            store.put({ key: 'counts', value: doctorCountsFromLS });
+            localStorage.removeItem('doctorCounts');
+        }
+        const lastResetDateFromLS = localStorage.getItem('lastResetDate');
+        if (lastResetDateFromLS) {
+            const transaction = db.transaction(['doctorCounts'], 'readwrite');
+            const store = transaction.objectStore('doctorCounts');
+            store.put({ key: 'lastResetDate', value: lastResetDateFromLS });
+            localStorage.removeItem('lastResetDate');
+        }
+    }
+
+    async function loadData() {
+        const db = await openDatabase();
+        const patientTransaction = db.transaction(['patients'], 'readonly');
+        const patientStore = patientTransaction.objectStore('patients');
+        const patientRequest = patientStore.getAll();
+        const patientsPromise = new Promise((resolve, reject) => {
+            patientRequest.onsuccess = function() {
+                patients = patientRequest.result;
+                resolve();
+            };
+            patientRequest.onerror = function() {
+                reject(patientRequest.error);
+            };
+        });
+        const doctorTransaction = db.transaction(['doctors'], 'readonly');
+        const doctorStore = doctorTransaction.objectStore('doctors');
+        const doctorRequest = doctorStore.get('list');
+        const doctorsPromise = new Promise((resolve, reject) => {
+            doctorRequest.onsuccess = function() {
+                if (doctorRequest.result) {
+                    doctors = doctorRequest.result.value;
+                } else {
+                    doctors = [
+                        "DEEDAR","MUHAMMAD ILYAS","SARFARAZ KHAN","GUL AFROZ","SAIMA RASOOL","ZAFAR IQBAL",
+                        "SULEIMAN","MUHAMMAD ALI","NASIBULLAH","SHAH ZAMAN","MUHAMMAD BUKHSH","NAIM MULGHANI",
+                        "NASEER AHMED", "MUDASIRA", "AMEEN", "MUHAMMAD RAZA","ANWAR","ABDUL HAMEED","AFIFA","HABINULLAH",
+                        "ABDUL MAJEED MAGSI",
+                    ];
+                    const saveTransaction = db.transaction(['doctors'], 'readwrite');
+                    const saveStore = saveTransaction.objectStore('doctors');
+                    saveStore.put({ key: 'list', value: doctors });
+                }
+                resolve();
+            };
+            doctorRequest.onerror = function() {
+                reject(doctorRequest.error);
+            };
+        });
+        const countsTransaction = db.transaction(['doctorCounts'], 'readonly');
+        const countsStore = countsTransaction.objectStore('doctorCounts');
+        const countsRequest = countsStore.get('counts');
+        const countsPromise = new Promise((resolve, reject) => {
+            countsRequest.onsuccess = function() {
+                if (countsRequest.result) {
+                    doctorCounts = countsRequest.result.value;
+                } else {
+                    doctorCounts = {};
+                }
+                resolve();
+            };
+            countsRequest.onerror = function() {
+                reject(countsRequest.error);
+            };
+        });
+        await Promise.all([patientsPromise, doctorsPromise, countsPromise]);
+    }
+
+    async function savePatient(patient) {
+        const db = await openDatabase();
+        const transaction = db.transaction(['patients'], 'readwrite');
+        const store = transaction.objectStore('patients');
+        store.put(patient);
+    }
+
+    async function saveDoctors() {
+        const db = await openDatabase();
+        const transaction = db.transaction(['doctors'], 'readwrite');
+        const store = transaction.objectStore('doctors');
+        store.put({ key: 'list', value: doctors });
+    }
+
+    async function saveDoctorCounts() {
+        const db = await openDatabase();
+        const transaction = db.transaction(['doctorCounts'], 'readwrite');
+        const store = transaction.objectStore('doctorCounts');
+        store.put({ key: 'counts', value: doctorCounts });
+    }
+
+    async function getLastResetDate() {
+        const db = await openDatabase();
+        const transaction = db.transaction(['doctorCounts'], 'readonly');
+        const store = transaction.objectStore('doctorCounts');
+        const request = store.get('lastResetDate');
+        return new Promise((resolve, reject) => {
+            request.onsuccess = function() {
+                resolve(request.result ? request.result.value : null);
+            };
+            request.onerror = function() {
+                reject(request.error);
+            };
+        });
+    }
+
+    async function setLastResetDate(date) {
+        const db = await openDatabase();
+        const transaction = db.transaction(['doctorCounts'], 'readwrite');
+        const store = transaction.objectStore('doctorCounts');
+        store.put({ key: 'lastResetDate', value: date });
+    }
+async function getGlobalPatientCount() {
+  const db = await openDatabase();
+  const transaction = db.transaction(['config'], 'readonly');
+  const store = transaction.objectStore('config');
+  const request = store.get('globalPatientCount');
+  return new Promise((resolve) => {
+    request.onsuccess = () => {
+      const result = request.result;
+      const today = getToday();
+      // Check if count is for today; if not, start at 0
+      resolve((result && result.date === today) ? result.count : 0);
+    };
+  });
+}
+
+async function setGlobalPatientCount(count) {
+  const db = await openDatabase();
+  const today = getToday();
+  const transaction = db.transaction(['config'], 'readwrite');
+  const store = transaction.objectStore('config');
+  store.put({ key: 'globalPatientCount', date: today, count });
+}
+    function getToday() {
+      return new Date().toLocaleDateString();
+    }
+
+    async function resetDoctorCountsIfNewDay() {
+        const today = getToday();
+        const lastResetDate = await getLastResetDate();
+        if (lastResetDate && lastResetDate !== today) {
+            const db = await openDatabase();
+            const transaction = db.transaction(['doctorCountsHistory'], 'readwrite');
+            const store = transaction.objectStore('doctorCountsHistory');
+            store.put({ date: lastResetDate, counts: doctorCounts });
+            doctorCounts = {};
+            await setGlobalPatientCount(0);  // Reset global count for new day
+            await saveDoctorCounts();
+            await setLastResetDate(today);
+        }
+    }
+
+    async function updatePatientCountDisplay() {
+      const selectedDoctor = document.getElementById('doctorName').value;
+      const countGroup = document.getElementById('patientCountGroup');
+      const countLabel = document.getElementById('patientCountLabel');
+      const countInput = document.getElementById('patientCountInput');
+      if (selectedDoctor) {
+        const today = getToday();
+        const count = doctorCounts[selectedDoctor] && doctorCounts[selectedDoctor].date === today ? doctorCounts[selectedDoctor].count : 0;
+        countLabel.textContent = `Today's Patient Count for Doctor: ${selectedDoctor}`;
+        countInput.value = count;
+        countGroup.style.display = 'block';
+      } else {
+        countGroup.style.display = 'none';
+      }
+    }
+
+    async function updateDoctorCount() {
+      const selectedDoctor = document.getElementById('doctorName').value;
+      const newCount = parseInt(document.getElementById('patientCountInput').value, 10);
+      if (selectedDoctor && !isNaN(newCount) && newCount >= 0) {
+        const today = getToday();
+        doctorCounts[selectedDoctor] = { date: today, count: newCount };
+        await saveDoctorCounts();
+      } else {
+        alert('Please enter a valid non-negative number.');
+      }
+    }
+
+    function renderDoctorList() {
+      const doctorList = document.getElementById('doctorList');
+      doctorList.innerHTML = '';
+      doctors.forEach(doc => {
+        const option = document.createElement('option');
+        option.value = doc;
+        doctorList.appendChild(option);
+      });
+      document.getElementById('doctorCount').innerText = "Total Doctors: " + doctors.length;
+    }
+
+    async function addPatient() {
+      await resetDoctorCountsIfNewDay();
+      const name = document.getElementById('patientName').value;
+      const contact = document.getElementById('contactNumber').value;
+      const gender = document.getElementById('gender').value;
+      const age = document.getElementById('patientAge').value;
+      const doctor = document.getElementById('doctorName').value;
+      const notes = document.getElementById('clinicalNotes').value;
+      const bp = document.getElementById('bp').value;
+      const weight = document.getElementById('weight').value;
+      const amount = document.getElementById('amount').value;
+      const temperature = document.getElementById('temperature').value;
+      const rx = document.getElementById('rxText').value;
+      const today = getToday();
+      if (doctor && !doctors.includes(doctor)) {
+        doctors.push(doctor);
+        await saveDoctors();
+        renderDoctorList();
+      }
+      if (doctor) {
+        if (doctorCounts[doctor] && doctorCounts[doctor].date === today) {
+          doctorCounts[doctor].count++;
+        } else {
+          doctorCounts[doctor] = { date: today, count: 1 };
+        }
+        await saveDoctorCounts();
+      }
+      
+const dateNow = today;
+let globalCount = await getGlobalPatientCount() + 1;
+await setGlobalPatientCount(globalCount);
+const now = new Date();
+const monthNum = now.getMonth() + 1;  // 1-12
+const monthLetter = String.fromCharCode(64 + monthNum);  // A=Jan, B=Feb, ..., L=Dec
+const day = now.getDate().toString().padStart(2, '0');  // e.g., '27'
+const seq = globalCount.toString().padStart(3, '0');  // e.g., '001' (up to 999)
+const patientId = `${monthLetter}${day}${seq}`;  // e.g., 'H27001' for Aug 27, patient 1
+if (patients.some(p => p.id === patientId)) {
+  alert('ID conflict! Please try again.');
+  return;
+}
+const newPatient = {
+  id: patientId,
+  name,
+  contact,
+  gender,
+  age,
+  doctor,
+  notes,
+  bp,
+  weight,
+  amount,
+  temperature,
+  dateAdded: dateNow,
+  rx
+};
+
+      patients.push(newPatient);
+      await savePatient(newPatient);
+      renderPatientTable();
+      document.getElementById('patientForm').reset();
+      document.getElementById('rxText').value = '';
+      updatePatientCountDisplay();
+      printRecord(patientId);
+    }
+
+    function renderPatientTable() {
+      const tbody = document.querySelector('#patientTable tbody');
+      tbody.innerHTML = '';
+      patients.forEach(patient => {
+        const row = document.createElement('tr');
+        row.innerHTML =
+          `<td>${patient.id}</td>
+           <td>${patient.name}</td>
+           <td>${patient.gender}</td>
+           <td>${patient.age} yrs</td>
+           <td>
+             <button class="table-btn" onclick="printRecord('${patient.id}')">Print</button>
+           </td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    function deletePatient() {
+      alert("Delete functionality not implemented yet.");
+    }
+
+    function printRecord(patientId) {
+      const patient = patients.find(p => p.id === patientId);
+      if (!patient) return;
+      const today = getToday();
+      let docCount = 0;
+      if (patient.doctor && doctorCounts[patient.doctor] && doctorCounts[patient.doctor].date === today) {
+        docCount = doctorCounts[patient.doctor].count;
+      }
+      const printHTML =
+        `<div class="print-container">
+          <div class="print-header">
+            <img src="logo.png" alt="Hospital Logo" style="object-fit:contain;">
+            <div class="address">
+              <h2>Darul Shifa Imam Khomeini Hospital</h2>
+              <p>Block 3, Hazara Town, Brewery Road, Quetta</p>
+              <p>Phone: 0812857135</p>
+              <div style="margin-left:730px;"><strong>Today's Count:</strong> ${docCount}</div>
+            </div>
+          </div>
+          <div class="print-top-info">
+            <div><strong>Dr Name:</strong> ${patient.doctor || '___________'}</div>
+            <div><strong>Amount:</strong> ${patient.amount || '___________'}</div>
+            <div><strong>Date:</strong> ${patient.dateAdded || '___________'}</div>
+          </div>
+          <div class="columns">
+            <div class="left-column">
+              <h2>Clinical Notes</h2>
+              <div><strong>BP:</strong> ${patient.bp || '____________'}</div>
+              <div><strong>Weight:</strong> ${patient.weight || '_______'} kg</div>
+              <div><strong>Temperature:</strong> ${patient.temperature || '_______'}</div>
+            </div>
+            <div class="right-column">
+              <div><strong>Patient ID:</strong> ${patient.id}</div>
+              <div><strong>Patient Name:</strong> ${patient.name}</div>
+              <div><strong>Gender:</strong> ${patient.gender}</div>
+              <div><strong>Age:</strong> ${patient.age} yrs</div>
+              <div><strong>Contact:</strong> ${patient.contact || '___________'}</div>
+              <div class="rx">
+                <h1>RX</h1>
+                <div style="white-space: pre-wrap; font-size: 25px;">${patient.rx || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      const printWindow = window.open('', '', 'width=800,height=600');
+      printWindow.document.write(
+        `<html>
+          <head>
+            <title>Patient Record</title>
+            <style>${document.querySelector('style').textContent}</style>
+          </head>
+          <body>${printHTML}</body>
+        </html>`
+      );
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    async function init() {
+        await migrateData();
+        await loadData();
+        await resetDoctorCountsIfNewDay();
+        renderDoctorList();
+        renderPatientTable();
+    }
+
+    init();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const doctorNameElement = document.getElementById('doctorName');
+        if (doctorNameElement) {
+            doctorNameElement.addEventListener('change', updatePatientCountDisplay);
+        } else {
+            console.error('Element with ID "doctorName" not found.');
+        }
+        const patientCountInputElement = document.getElementById('patientCountInput');
+        if (patientCountInputElement) {
+            patientCountInputElement.addEventListener('change', updateDoctorCount);
+        } else {
+            console.error('Element with ID "patientCountInput" not found.');
+        }
+        updatePatientCountDisplay();
+    });
+  </script>
+</body>
+</html>

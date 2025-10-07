@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        header img { width: 80px; height: 80px; object-fit: contain; }
+        .header-title { font-size: 1.5rem; font-weight: bold; color: #333; }
+        .user-info { text-align: right; }
+        .user-info #logout-btn { background: #d9534f; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-top: 5px; }
+        .dashboard-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+        .welcome-message { font-size: 2rem; color: #333; margin-bottom: 2rem; }
+        .nav-links { display: flex; gap: 2rem; justify-content: center; }
+        .nav-card { background: white; color: #333; text-decoration: none; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s, box-shadow 0.2s; }
+        .nav-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .nav-card h2 { margin-top: 0; font-size: 1.5rem; }
+        .nav-card p { color: #666; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img src="logo.png" alt="Hospital Logo">
+        <div class="header-title">Darul Shifa Hospital Portal</div>
+        <div class="user-info">
+            <span id="userName"></span><br>
+            <button id="logout-btn">Logout</button>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <h1 class="welcome-message" id="welcomeMessage"></h1>
+        <div class="nav-links">
+            <a id="patient-link" href="patient.html" class="nav-card" style="display: none;" >
+                <h2>Patient Records 📝</h2>
+                <p>Manage patient registration and data.</p>
+            </a>
+            <a id="pharmacy-link" href="pharmacy.html" class="nav-card" style="display: none;">
+                <h2>Pharmacy System 💊</h2>
+                <p>Manage inventory and sales.</p>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const userName = sessionStorage.getItem('loggedInUser');
+            const userRole = sessionStorage.getItem('loggedInRole');
+
+            // If no one is logged in, redirect to the login page
+            if (!userName || !userRole) {
+                window.location.href = 'index.html';
+                return; // Stop the script
+            }
+
+            // Display user's name and welcome message
+            document.getElementById('userName').textContent = `Logged in as: ${userName}`;
+            document.getElementById('welcomeMessage').textContent = `Welcome, ${userName}!`;
+
+            // --- Role-Based Access Control ---
+            // Show links based on the user's role
+            if (userRole === 'admin' || userRole === 'reception') {
+                document.getElementById('patient-link').style.display = 'block';
+            }
+            if (userRole === 'admin' || userRole === 'pharmacy') {
+                document.getElementById('pharmacy-link').style.display = 'block';
+            }
+
+            // Handle logout
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                sessionStorage.clear(); // Clear all session data
+                window.location.href = 'index.html'; // Redirect to login page
+            });
+        });
+    </script>
+
+</body>
+</html>
