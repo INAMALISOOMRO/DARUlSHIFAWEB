@@ -14,6 +14,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
   <style>
     .custom-blue { background-color: #1E3A8A; }
     .custom-blue-text { color: #1E3A8A; }
@@ -35,6 +36,32 @@
   <div id="root"></div>
   
   <script type="text/babel">
+
+// At the top of your <script type="text/babel"> in pharmacy.html
+// and the <script> in patient.html
+
+const { Client, Account, Databases, ID, Query, Realtime } = Appwrite;
+
+const client = new Client();
+client
+    .setEndpoint('http://localhost/v1') // Your Appwrite endpoint
+    .setProject('YOUR_PROJECT_ID');     // Find this in your Appwrite project settings
+
+const account = new Account(client);
+const databases = new Databases(client);
+const realtime = new Realtime(client);
+
+// --- Define your new Database and Collection IDs ---
+// --- Get these from your Appwrite Console ---
+const PHARMACY_DB_ID = 'Pharmacy';           // The Database ID (or name)
+const MEDICINES_COL_ID = 'medicines';       // The Collection ID (or name)
+const TRANSACTIONS_COL_ID = 'transactions';
+
+const PATIENT_DB_ID = 'Patient Records';
+const PATIENTS_COL_ID = 'patients';
+const DOCTORS_COL_ID = 'doctors';
+// ...etc
+
     // Check if logged in and has access
 const role = sessionStorage.getItem('loggedInRole');
 if (!role || (role !== 'admin' && role !== 'pharmacy')) {
@@ -132,71 +159,114 @@ if (!role || (role !== 'admin' && role !== 'pharmacy')) {
         try {
           const queue = await db.syncQueue.toArray();
           for (const item of queue) {
-            try {
-              if (item.type === 'addMedicine') {
-                await supabaseClient.from('medicines').insert([item.data]).select();
-              } else if (item.type === 'transaction') {
-                await supabaseClient.from('transactions').insert([item.data]).select();
-              } else if (item.type === 'deleteMedicine') {
-                await supabaseClient.from('medicines').delete().eq('id', item.data.id);
-              } else if (item.type === 'updateMedicine') {
-                await supabaseClient.from('medicines').update(item.data).eq('id', item.data.id);
-              }
-              await db.syncQueue.delete(item.id);
-            } catch (err) {
-              console.error('Sync failed for item:', item, err);
-            }
-          }
+  try {
+    if (item.type === 'addMedicine') {
+      // 'item.data' is the medicine object. 'ID.unique()' lets Appwrite create an ID.
+      await databases.createDocument(
+        PHARMACY_DB_ID,
+        MEDICINES_COL_ID,
+        ID.unique(),
+        item.data
+      );
+    } else if (item.type === 'transaction') {
+      // We must stringify the 'items' array before saving
+      const txData = {
+        ...item.data,
+        items: JSON.stringify(item.data.items)
+      };
+      await databases.createDocument(
+        PHARMACY_DB_ID,
+        TRANSACTIONS_COL_ID,
+        ID.unique(),
+        txData
+      );
+    } else if (item.type === 'deleteMedicine') {
+      // 'item.data.id' must be the Appwrite document $id
+      await databases.deleteDocument(
+        PHARMACY_DB_ID,
+        MEDICINES_COL_ID,
+        item.data.id // This MUST be the $id
+      );
+    } else if (item.type === 'updateMedicine') {
+      // 'item.data.id' must be the Appwrite document $id
+      const { id, ...medicineData } = item.data; // Separate the ID from the rest of the data
+      await databases.updateDocument(
+        PHARMACY_DB_ID,
+        MEDICINES_COL_ID,
+        id, // This MUST be the $id
+        medicineData // Pass only the data to be updated
+      );
+    }
+    // If sync is successful, remove it from the queue
+    await db.syncQueue.delete(item.id);
+  } catch (err) {
+    console.error('Sync failed for item:', item, err);
+  }
+}
         } catch (err) {
           console.error('Error syncing data:', err);
         }
       };
 
+
+      
       useEffect(() => {
         const handleOnline = () => setIsOnline(true);
         const handleOffline = () => setIsOnline(false);
 
         const loadData = async () => {
   try {
-    // Fetch medicines from Supabase
-    const { data: medData, error: medError } = await supabaseClient.from('medicines').select('*');
-    if (medError) {
-      console.error('Error loading medicines:', medError);
-    } else {
-      // Synchronize local Dexie database with Supabase data
-      await db.medicines.clear(); // Clear any existing local data
-      await db.medicines.bulkAdd(medData); // Add all fetched medicines
-      setMedicines(medData || []); // Update state
-    }
+  // Fetch medicines from Appwrite
+  const { documents: medData } = await databases.listDocuments(
+      PHARMACY_DB_ID,
+      MEDICINES_COL_ID,
+      [Query.limit(5000)] // Get up to 5000 medicines
+  );
+  await db.medicines.clear();
+  // Appwrite data is in `documents`. We spread it to save just the data.
+  await db.medicines.bulkAdd(medData.map(doc => ({ ...doc, id: doc.$id }))); // Map $id to id for Dexie
+  setMedicines(medData.map(doc => ({ ...doc, id: doc.$id })));
+  
+  // Load transactions
+  const { documents: txData } = await databases.listDocuments(
+      PHARMACY_DB_ID,
+      TRANSACTIONS_COL_ID,
+      [Query.limit(5000)]
+  );
+  // Assuming 'items' is stored as a JSON string, we parse it.
+  const parsedTxData = txData.map(tx => ({ 
+      ...tx, 
+      id: tx.$id, 
+      items: JSON.parse(tx.items) 
+  }));
+  setReports(parsedTxData || []);
+  setFilteredReports(parsedTxData || []);
 
-    // Load transactions
-    const { data: txData, error: txError } = await supabaseClient.from('transactions').select('*');
-    if (txError) console.error('Error loading transactions:', txError);
-    else {
-      setReports(txData || []);
-      setFilteredReports(txData || []);
-    }
+  // Load settings
+  // Note: Your old code loaded users, but you're skipping auth, so we'll skip loading users.
+  const { documents: settingsData } = await databases.listDocuments(
+      PHARMACY_DB_ID,
+      SETTINGS_COL_ID,
+      [Query.equal('key', 'settings')] // Find the doc with key: 'settings'
+  );
 
-    // Load users
-    const { data: userData, error: userError } = await supabaseClient.from('users').select('*');
-    if (userError) console.error('Error loading users:', userError);
-    else if (!userData || userData.length === 0) {
-      const defaultUser = { full_name: "Administrator", username: "admin", role: "Administrator Bible", status: "Active" };
-      const { data: newUser, error: addError } = await supabaseClient.from('users').insert([defaultUser]).select();
-      if (addError) console.error('Error adding default user:', addError);
-      else setUsers([newUser[0]]);
-    } else {
-      setUsers(userData);
-    }
-
-    // Load settings
-    const { data: settingsData, error: settingsError } = await supabaseClient.from('settings').select('*').eq('key', 'settings').single();
-    if (settingsError && settingsError.code !== 'PGRST116') console.error('Error loading settings:', settingsError);
-    else if (settingsData) setSettings(settingsData.value);
-    else setSettings(defaultSettings);
-  } catch (err) {
-    console.error('Error loading initial data:', err);
+  if (settingsData.length > 0) {
+      // Settings are stored as a JSON string in the 'value' attribute
+      setSettings(JSON.parse(settingsData[0].value));
+  } else {
+      setSettings(defaultSettings);
   }
+  
+} catch (err) {
+  console.error('Error loading initial data, trying offline:', err);
+  // If Appwrite fails (e.g., offline), load from local Dexie.
+  // This is your existing, excellent offline-first logic!
+  const localMeds = await db.medicines.toArray();
+  setMedicines(localMeds);
+  const localTxs = await db.transactions.toArray();
+  setReports(localTxs);
+  setFilteredReports(localTxs);
+}
 };
 
         loadData();
@@ -214,6 +284,65 @@ if (!role || (role !== 'admin' && role !== 'pharmacy')) {
           syncData();
         }
       }, [isOnline]);
+
+
+
+// Add this inside the App() function, near your other useEffects
+useEffect(() => {
+    console.log('Setting up realtime listeners...');
+    
+    // Subscribe to MEDICINE changes
+    const unsubscribeMeds = realtime.subscribe(
+      `databases.${PHARMACY_DB_ID}.collections.${MEDICINES_COL_ID}.documents`, 
+      (response) => {
+        console.log('Realtime medicine update:', response);
+        const doc = { ...response.payload, id: response.payload.$id };
+
+        if (response.events.includes('database.documents.create')) {
+            db.medicines.add(doc);
+            setMedicines(prev => [...prev, doc]);
+        } else if (response.events.includes('database.documents.update')) {
+            db.medicines.update(doc.id, doc);
+            setMedicines(prev => prev.map(m => m.id === doc.id ? doc : m));
+        } else if (response.events.includes('database.documents.delete')) {
+            db.medicines.delete(doc.id);
+            setMedicines(prev => prev.filter(m => m.id !== doc.id));
+        }
+    });
+
+    // Subscribe to TRANSACTION changes
+    const unsubscribeTxs = realtime.subscribe(
+      `databases.${PHARMACY_DB_ID}.collections.${TRANSACTIONS_COL_ID}.documents`,
+      (response) => {
+        if (response.events.includes('database.documents.create')) {
+            console.log('Realtime transaction update:', response);
+            const doc = { 
+                ...response.payload, 
+                id: response.payload.$id,
+                items: JSON.parse(response.payload.items) // Don't forget to parse!
+            };
+            setReports(prev => [...prev, doc]);
+            setFilteredReports(prev => [...prev, doc]);
+        }
+    });
+
+    // Cleanup function
+    return () => {
+        unsubscribeMeds();
+        unsubscribeTxs();
+    };
+}, []); // Empty array means this runs once on component mount
+
+
+
+
+
+
+
+
+
+
+
 
    useEffect(() => {
   if (searchTerm) {
@@ -1209,28 +1338,55 @@ if (!role || (role !== 'admin' && role !== 'pharmacy')) {
   expiry: formData.expiry
 };
                           try {
-                            if (editingMedicine) {
-                              const { error } = await supabaseClient.from('medicines').update(medicineData).eq('id', editingMedicine.id);
-                              if (error) throw error;
-                              setMedicines(medicines.map(m => m.id === editingMedicine.id ? { ...m, ...medicineData } : m));
-                              if (isOnline) {
-                                await db.syncQueue.add({ type: 'updateMedicine', data: { id: editingMedicine.id, ...medicineData } });
-                              }
-                            } else {
-                              const { data, error } = await supabaseClient.from('medicines').insert([medicineData]).select();
-                              if (error) throw error;
-                              const newMedicine = data[0];
-                              setMedicines([...medicines, newMedicine]);
-                              if (isOnline) {
-                                await db.syncQueue.add({ type: 'addMedicine', data: newMedicine });
-                              }
-                            }
-                            setEditingMedicine(null);
-                            setCurrentSection('Inventory');
-                          } catch (err) {
-                            console.error('Error saving medicine:', err);
-                            alert('Error saving medicine: ' + err.message);
-                          }
+  if (editingMedicine) {
+    // editingMedicine.id should be the Appwrite $id
+    const { id, ...dataToUpdate } = medicineData; // Separate ID
+    await databases.updateDocument(
+      PHARMACY_DB_ID,
+      MEDICINES_COL_ID,
+      editingMedicine.id, // The $id
+      dataToUpdate
+    );
+    // Also update in local Dexie
+    await db.medicines.update(editingMedicine.id, dataToUpdate);
+    setMedicines(medicines.map(m => m.id === editingMedicine.id ? { ...m, ...dataToUpdate } : m));
+    
+  } else {
+    // Create new medicine
+    const response = await databases.createDocument(
+      PHARMACY_DB_ID,
+      MEDICINES_COL_ID,
+      ID.unique(), // Let Appwrite create the ID
+      medicineData
+    );
+    const newMedicine = { ...response, id: response.$id }; // Use $id as id
+    // Also add to local Dexie
+    await db.medicines.add(newMedicine);
+    setMedicines([...medicines, newMedicine]);
+  }
+  setEditingMedicine(null);
+  setCurrentSection('Inventory');
+} catch (err) {
+  // OFFLINE logic
+  console.error('Error saving medicine, saving to sync queue:', err);
+  alert('You are offline. Medicine saved locally and will sync when online.');
+  
+  // This is your existing offline logic, just make sure it's here
+  if (editingMedicine) {
+    await db.medicines.update(editingMedicine.id, medicineData);
+    setMedicines(medicines.map(m => m.id === editingMedicine.id ? { ...m, ...medicineData } : m));
+    await db.syncQueue.add({ type: 'updateMedicine', data: { id: editingMedicine.id, ...medicineData } });
+  } else {
+    // Give it a temporary local ID for Dexie
+    const tempId = `local_${Date.now()}`;
+    const newLocalMedicine = { ...medicineData, id: tempId };
+    await db.medicines.add(newLocalMedicine);
+    setMedicines([...medicines, newLocalMedicine]);
+    await db.syncQueue.add({ type: 'addMedicine', data: medicineData }); // Sync queue gets data *without* temp ID
+  }
+  setEditingMedicine(null);
+  setCurrentSection('Inventory');
+}
                         }}
                         className="custom-blue text-white py-2 px-4 rounded"
                       >

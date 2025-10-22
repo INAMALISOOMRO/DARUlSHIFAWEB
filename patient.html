@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
   <title>Darul Shifa Patient Management</title>
   <style>
     * {
@@ -414,6 +415,36 @@
     Made by INAM ALI SOOMRO
   </footer>
 <script>
+
+
+// At the top of your <script type="text/babel"> in pharmacy.html
+// and the <script> in patient.html
+
+const { Client, Account, Databases, ID, Query, Realtime } = Appwrite;
+
+const client = new Client();
+client
+    .setEndpoint('http://localhost/v1') // Your Appwrite endpoint
+    .setProject('YOUR_PROJECT_ID');     // Find this in your Appwrite project settings
+
+const account = new Account(client);
+const databases = new Databases(client);
+const realtime = new Realtime(client);
+
+// --- Define your new Database and Collection IDs ---
+// --- Get these from your Appwrite Console ---
+const PHARMACY_DB_ID = 'Pharmacy';           // The Database ID (or name)
+const MEDICINES_COL_ID = 'medicines';       // The Collection ID (or name)
+const TRANSACTIONS_COL_ID = 'transactions';
+
+const PATIENT_DB_ID = 'Patient Records';
+const PATIENTS_COL_ID = 'patients';
+const DOCTORS_COL_ID = 'doctors';
+// ...etc
+
+
+
+
     let patients = [];
     let doctors = [];
     let doctorCounts = {};
@@ -488,61 +519,119 @@
     }
 
     async function loadData() {
-        const db = await openDatabase();
-        const patientTransaction = db.transaction(['patients'], 'readonly');
-        const patientStore = patientTransaction.objectStore('patients');
+    const db = await openDatabase();
+    
+    try {
+        // --- ONLINE: Try to load from Appwrite ---
+        console.log('Online, fetching from Appwrite...');
+        
+        // Load Patients
+        const { documents: patientDocs } = await databases.listDocuments(
+            PATIENT_DB_ID,
+            PATIENTS_COL_ID,
+            [Query.limit(5000)]
+        );
+        patients = patientDocs.map(doc => ({ ...doc, id: doc.$id })); // Use $id as id
+        // Sync to IndexedDB
+        const patientTx = db.transaction(['patients'], 'readwrite');
+        const patientStore = patientTx.objectStore('patients');
+        await patientStore.clear();
+        patients.forEach(p => patientStore.put(p));
+
+        // Load Doctors
+        const { documents: doctorDocs } = await databases.listDocuments(
+            PATIENT_DB_ID,
+            DOCTORS_COL_ID,
+            [Query.limit(500)]
+        );
+        doctors = doctorDocs.map(doc => doc.name); // Just get the names
+        // Sync to IndexedDB
+        const doctorTx = db.transaction(['doctors'], 'readwrite');
+        const doctorStore = doctorTx.objectStore('doctors');
+        await doctorStore.put({ key: 'list', value: doctors });
+
+        // Load Doctor Counts
+        const { documents: countDocs } = await databases.listDocuments(
+            PATIENT_DB_ID,
+            DAILYCOUNTS_COL_ID,
+            [Query.equal('date', getToday())] // Only get counts for today
+        );
+        doctorCounts = {};
+        countDocs.forEach(doc => {
+            doctorCounts[doc.doctor] = { date: doc.date, count: doc.count };
+        });
+        // Sync to IndexedDB
+        const countsTx = db.transaction(['doctorCounts'], 'readwrite');
+        const countsStore = countsTx.objectStore('doctorCounts');
+        await countsStore.put({ key: 'counts', value: doctorCounts });
+
+    } catch (err) {
+        // --- OFFLINE: Load from IndexedDB ---
+        console.error('Offline or error, loading from IndexedDB:', err);
+        
+        // Load Patients (your existing logic)
+        const patientTx = db.transaction(['patients'], 'readonly');
+        const patientStore = patientTx.objectStore('patients');
         const patientRequest = patientStore.getAll();
-        const patientsPromise = new Promise((resolve, reject) => {
-            patientRequest.onsuccess = function() {
-                patients = patientRequest.result;
-                resolve();
-            };
-            patientRequest.onerror = function() {
-                reject(patientRequest.error);
-            };
+        patients = await new Promise((res, rej) => {
+            patientRequest.onsuccess = () => res(patientRequest.result || []);
+            patientRequest.onerror = () => rej(patientRequest.error);
         });
-        const doctorTransaction = db.transaction(['doctors'], 'readonly');
-        const doctorStore = doctorTransaction.objectStore('doctors');
+
+        // Load Doctors (your existing logic)
+        const doctorTx = db.transaction(['doctors'], 'readonly');
+        const doctorStore = doctorTx.objectStore('doctors');
         const doctorRequest = doctorStore.get('list');
-        const doctorsPromise = new Promise((resolve, reject) => {
-            doctorRequest.onsuccess = function() {
-                if (doctorRequest.result) {
-                    doctors = doctorRequest.result.value;
-                } else {
-                    doctors = [
-                        "DEEDAR","MUHAMMAD ILYAS","SARFARAZ KHAN","GUL AFROZ","SAIMA RASOOL","ZAFAR IQBAL",
-                        "SULEIMAN","MUHAMMAD ALI","NASIBULLAH","SHAH ZAMAN","MUHAMMAD BUKHSH","NAIM MULGHANI",
-                        "NASEER AHMED", "MUDASIRA", "AMEEN", "MUHAMMAD RAZA","ANWAR","ABDUL HAMEED","AFIFA","HABINULLAH",
-                        "ABDUL MAJEED MAGSI", "MIRZA OMAR",
-                    ];
-                    const saveTransaction = db.transaction(['doctors'], 'readwrite');
-                    const saveStore = saveTransaction.objectStore('doctors');
-                    saveStore.put({ key: 'list', value: doctors });
-                }
-                resolve();
-            };
-            doctorRequest.onerror = function() {
-                reject(doctorRequest.error);
-            };
+        doctors = await new Promise((res, rej) => {
+            doctorRequest.onsuccess = () => res(doctorRequest.result ? doctorRequest.result.value : []); // Add default doctors here if needed
+            doctorRequest.onerror = () => rej(doctorRequest.error);
         });
-        const countsTransaction = db.transaction(['doctorCounts'], 'readonly');
-        const countsStore = countsTransaction.objectStore('doctorCounts');
+
+        // Load Doctor Counts (your existing logic)
+        const countsTx = db.transaction(['doctorCounts'], 'readonly');
+        const countsStore = countsTx.objectStore('doctorCounts');
         const countsRequest = countsStore.get('counts');
-        const countsPromise = new Promise((resolve, reject) => {
-            countsRequest.onsuccess = function() {
-                if (countsRequest.result) {
-                    doctorCounts = countsRequest.result.value;
-                } else {
-                    doctorCounts = {};
-                }
-                resolve();
-            };
-            countsRequest.onerror = function() {
-                reject(countsRequest.error);
-            };
+        doctorCounts = await new Promise((res, rej) => {
+            countsRequest.onsuccess = () => res(countsRequest.result ? countsRequest.result.value : {});
+            countsRequest.onerror = () => rej(countsRequest.error);
         });
-        await Promise.all([patientsPromise, doctorsPromise, countsPromise]);
     }
+    // We also need to load the global patient count
+    await loadGlobalPatientCount(db);
+}
+
+// Helper for loading global count (Appwrite + IndexedDB)
+async function loadGlobalPatientCount(db) {
+    const today = getToday();
+    try {
+        // ONLINE: Try Appwrite
+        const { documents } = await databases.listDocuments(
+            PATIENT_DB_ID,
+            CONFIG_COL_ID,
+            [Query.equal('key', 'globalPatientCount')]
+        );
+        if (documents.length > 0) {
+            const config = documents[0];
+            // If date is not today, reset count
+            const count = (config.date === today) ? config.count : 0;
+            await setGlobalPatientCount(count); // Save to Appwrite (and local)
+        } else {
+            await setGlobalPatientCount(0); // Create it if it doesn't exist
+        }
+    } catch (err) {
+        // OFFLINE: Use IndexedDB
+        console.error('Offline, using local globalPatientCount:', err);
+        const transaction = db.transaction(['config'], 'readonly');
+        const store = transaction.objectStore('config');
+        const request = store.get('globalPatientCount');
+        const result = await new Promise(res => {
+            request.onsuccess = () => res(request.result);
+        });
+        if (!result || result.date !== today) {
+            await setGlobalPatientCount(0); // This will just save locally if offline
+        }
+    }
+}
 
     async function savePatient(patient) {
         const db = await openDatabase();
@@ -551,19 +640,67 @@
         store.put(patient);
     }
 
-    async function saveDoctors() {
-        const db = await openDatabase();
-        const transaction = db.transaction(['doctors'], 'readwrite');
-        const store = transaction.objectStore('doctors');
-        store.put({ key: 'list', value: doctors });
+   async function saveDoctors(doctorName) {
+    // Saves the *new* doctor
+    await saveDoctorsLocal(); // Save full list to IndexedDB (your existing function)
+    try {
+        // Save to Appwrite
+        await databases.createDocument(
+            PATIENT_DB_ID,
+            DOCTORS_COL_ID,
+            ID.unique(),
+            { name: doctorName }
+        );
+    } catch (err) {
+        console.error('Offline, could not sync new doctor:', err);
     }
+}
 
-    async function saveDoctorCounts() {
-        const db = await openDatabase();
-        const transaction = db.transaction(['doctorCounts'], 'readwrite');
-        const store = transaction.objectStore('doctorCounts');
-        store.put({ key: 'counts', value: doctorCounts });
+async function saveDoctorsLocal() {
+    // This is your old saveDoctors() function, renamed
+    const db = await openDatabase();
+    const transaction = db.transaction(['doctors'], 'readwrite');
+    const store = transaction.objectStore('doctors');
+    store.put({ key: 'list', value: doctors });
+}
+
+    async function saveDoctorCounts(doctor, count, date) {
+    await saveDoctorCountsLocal(); // Save all counts to IndexedDB
+    try {
+        // Save (update) this specific doctor's count in Appwrite
+        // We use the doctor name + date as a unique ID
+        const docId = `${doctor.replace(/\s+/g, '-')}-${date}`;
+        await databases.updateDocument(
+            PATIENT_DB_ID,
+            DAILYCOUNTS_COL_ID,
+            docId,
+            { doctor, count, date }
+        );
+    } catch (err) {
+        // Doc might not exist, so create it
+        try {
+            const docId = `${doctor.replace(/\s+/g, '-')}-${date}`;
+            await databases.createDocument(
+                PATIENT_DB_ID,
+                DAILYCOUNTS_COL_ID,
+                docId,
+                { doctor, count, date }
+            );
+        } catch (createErr) {
+            console.error('Offline, could not sync doctor count:', createErr);
+        }
     }
+}
+
+
+async function saveDoctorCountsLocal() {
+    // This is your old saveDoctorCounts() function, renamed
+    const db = await openDatabase();
+    const transaction = db.transaction(['doctorCounts'], 'readwrite');
+    const store = transaction.objectStore('doctorCounts');
+    store.put({ key: 'counts', value: doctorCounts });
+}
+
 
     async function getLastResetDate() {
         const db = await openDatabase();
@@ -586,20 +723,40 @@
         const store = transaction.objectStore('doctorCounts');
         store.put({ key: 'lastResetDate', value: date });
     }
-async function getGlobalPatientCount() {
-  const db = await openDatabase();
-  const transaction = db.transaction(['config'], 'readonly');
-  const store = transaction.objectStore('config');
-  const request = store.get('globalPatientCount');
-  return new Promise((resolve) => {
-    request.onsuccess = () => {
-      const result = request.result;
-      const today = getToday();
-      // Check if count is for today; if not, start at 0
-      resolve((result && result.date === today) ? result.count : 0);
-    };
-  });
+
+
+async function setGlobalPatientCount(count) {
+    const db = await openDatabase();
+    const today = getToday();
+    // Save to local IndexedDB
+    const transaction = db.transaction(['config'], 'readwrite');
+    const store = transaction.objectStore('config');
+    store.put({ key: 'globalPatientCount', date: today, count });
+
+    try {
+        // Save to Appwrite
+        // We use 'globalPatientCount' as the document ID
+        await databases.updateDocument(
+            PATIENT_DB_ID,
+            CONFIG_COL_ID,
+            'globalPatientCount',
+            { key: 'globalPatientCount', date: today, count }
+        );
+    } catch (err) {
+        // Doc might not exist, so create it
+        try {
+            await databases.createDocument(
+                PATIENT_DB_ID,
+                CONFIG_COL_ID,
+                'globalPatientCount',
+                { key: 'globalPatientCount', date: today, count }
+            );
+        } catch (createErr) {
+            console.error('Offline, could not sync global count:', createErr);
+        }
+    }
 }
+
 
 async function setGlobalPatientCount(count) {
   const db = await openDatabase();
@@ -684,18 +841,18 @@ async function setGlobalPatientCount(count) {
       const today = getToday();
 
       if (doctor && !doctors.includes(doctor)) {
-        doctors.push(doctor);
-        await saveDoctors();
-        renderDoctorList();
-      }
-      if (doctor) {
-        if (doctorCounts[doctor] && doctorCounts[doctor].date === today) {
-          doctorCounts[doctor].count++;
-        } else {
-          doctorCounts[doctor] = { date: today, count: 1 };
-        }
-        await saveDoctorCounts();
-      }
+    doctors.push(doctor);
+    await saveDoctors(doctor); // We'll modify this function
+    renderDoctorList();
+  }
+  if (doctor) {
+    if (doctorCounts[doctor] && doctorCounts[doctor].date === today) {
+      doctorCounts[doctor].count++;
+    } else {
+      doctorCounts[doctor] = { date: today, count: 1 };
+    }
+    await saveDoctorCounts(doctor, doctorCounts[doctor].count, today); // Modify this
+  }
       
       const dateNow = today;
       let globalCount = await getGlobalPatientCount() + 1;
@@ -713,7 +870,7 @@ async function setGlobalPatientCount(count) {
       }
 
       const newPatient = {
-        id: patientId,
+        patientId: patientId,
         name,
         contact,
         gender,
@@ -722,11 +879,36 @@ async function setGlobalPatientCount(count) {
         notes,
         bp,
         weight,
-        amount,
+        amount: parseFloat(amount) || 0,
         temperature,
-        dateAdded: dateNow,
+        dateAdded: today,
         rx
       };
+
+try {
+    // --- ONLINE: Save to Appwrite ---
+    // We use the custom patientId as the Appwrite Document ID ($id)
+    await databases.createDocument(
+      PATIENT_DB_ID,
+      PATIENTS_COL_ID,
+      patientId, // Use your custom ID
+      newPatient
+    );
+    
+    // Also save to local IndexedDB
+    await savePatient(newPatient); // Your existing function
+    
+  } catch (err) {
+    // --- OFFLINE: Save to IndexedDB only ---
+    console.error('Offline, saving patient locally:', err);
+    // We still save to IndexedDB.
+    await savePatient(newPatient);
+    // !! IMPORTANT !!
+    // You need to add a sync queue to patient.html, just like you did in pharmacy.html.
+    // For now, it just saves locally.
+    alert('Offline. Patient saved locally. Syncing is not yet implemented for this page.');
+  }
+
 
       patients.push(newPatient);
       await savePatient(newPatient);
@@ -958,9 +1140,64 @@ async function setGlobalPatientCount(count) {
         await resetDoctorCountsIfNewDay();
         renderDoctorList();
         renderPatientTable();
+        setupRealtimeListeners();
     }
 
     init();
+
+
+// Add this function somewhere in your script
+function setupRealtimeListeners() {
+    console.log('Setting up realtime listeners...');
+    
+    // Subscribe to PATIENT changes
+    realtime.subscribe(
+      `databases.${PATIENT_DB_ID}.collections.${PATIENTS_COL_ID}.documents`,
+      (response) => {
+        console.log('Realtime patient update:', response);
+        const doc = { ...response.payload, id: response.payload.$id };
+        
+        if (response.events.includes('database.documents.create')) {
+            // Add to in-memory list and local DB
+            patients.push(doc);
+            savePatient(doc); // Save to IndexedDB
+            renderPatientTable(); // Redraw the table
+        }
+        // Note: You can also add 'update' and 'delete' logic here
+    });
+
+    // Subscribe to DOCTOR COUNT changes
+    realtime.subscribe(
+      `databases.${PATIENT_DB_ID}.collections.${DAILYCOUNTS_COL_ID}.documents`,
+      (response) => {
+        if (response.events.includes('database.documents.update') || 
+            response.events.includes('database.documents.create')) 
+        {
+            console.log('Realtime count update:', response);
+            const doc = response.payload;
+            // Update in-memory counts
+            doctorCounts[doc.doctor] = { date: doc.date, count: doc.count };
+            saveDoctorCountsLocal(); // Save all counts to local DB
+            updatePatientCountDisplay(); // Update the UI if that doctor is selected
+        }
+    });
+    
+    // Subscribe to GLOBAL COUNT changes
+    realtime.subscribe(
+      `databases.${PATIENT_DB_ID}.collections.${CONFIG_COL_ID}.documents.globalPatientCount`,
+      (response) => {
+         if (response.events.includes('database.documents.update')) {
+             console.log('Realtime global count update:', response);
+             const doc = response.payload;
+             // Save to local DB (this function also saves to IndexedDB)
+             setGlobalPatientCount(doc.count); 
+         }
+      }
+    );
+}
+
+
+
 
     document.addEventListener('DOMContentLoaded', function() {
         const doctorNameElement = document.getElementById('doctorName');
